@@ -83,7 +83,7 @@ show_adb_installation_msg() {
 
 static void
 show_adb_err_msg(enum process_result err, const char *const argv[]) {
-    char buf[512];
+    char buf[512]; /* todo: should grow buffer here too? */
     switch (err) {
         case PROCESS_ERROR_GENERIC:
             argv_to_string(argv, buf, sizeof(buf));

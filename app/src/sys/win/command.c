@@ -29,34 +29,48 @@ enum process_result
 cmd_execute(const char *const argv[], HANDLE *handle) {
     STARTUPINFOW si;
     PROCESS_INFORMATION pi;
+    enum process_result res = PROCESS_SUCCESS;
+    wchar_t *wide = NULL;
+    char *cmd = NULL;
+    size_t len = 0;
     memset(&si, 0, sizeof(si));
     si.cb = sizeof(si);
-
-    char cmd[512];
-    if (build_cmd(cmd, sizeof(cmd), argv)) {
-        *handle = NULL;
-        return PROCESS_ERROR_GENERIC;
+    
+    for (size_t i = 0; argv[i]; i++) {
+        len += strlen(argv[i]);
+        len += 1; /* extra one for space */
     }
 
-    wchar_t *wide = utf8_to_wide_char(cmd);
+    cmd = malloc(len);
+    if (cmd == NULL || build_cmd(cmd, len, argv)) {
+        *handle = NULL;
+        res = PROCESS_ERROR_GENERIC;
+        goto end;
+    }
+
+    wide = utf8_to_wide_char(cmd);
     if (!wide) {
         LOGC("Could not allocate wide char string");
-        return PROCESS_ERROR_GENERIC;
+        res = PROCESS_ERROR_GENERIC;
+        goto end;
     }
 
     if (!CreateProcessW(NULL, wide, NULL, NULL, FALSE, 0, NULL, NULL, &si,
                         &pi)) {
-        SDL_free(wide);
         *handle = NULL;
         if (GetLastError() == ERROR_FILE_NOT_FOUND) {
-            return PROCESS_ERROR_MISSING_BINARY;
+            res = PROCESS_ERROR_MISSING_BINARY;
+        } else {
+            res = PROCESS_ERROR_GENERIC;
         }
-        return PROCESS_ERROR_GENERIC;
+        goto end;
     }
-
-    SDL_free(wide);
     *handle = pi.hProcess;
-    return PROCESS_SUCCESS;
+    end:
+    SDL_free(wide);
+    free(cmd);
+
+    return res;
 }
 
 bool
