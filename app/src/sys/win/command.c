@@ -32,17 +32,12 @@ cmd_execute(const char *const argv[], HANDLE *handle) {
     enum process_result res = PROCESS_SUCCESS;
     wchar_t *wide = NULL;
     char *cmd = NULL;
-    size_t len = 0;
+    size_t len = xargvlen(argv, NULL) + 1;
     memset(&si, 0, sizeof(si));
     si.cb = sizeof(si);
-    
-    for (size_t i = 0; argv[i]; i++) {
-        len += strlen(argv[i]);
-        len += 1; /* extra one for space */
-    }
 
     cmd = malloc(len);
-    if (cmd == NULL || build_cmd(cmd, len, argv)) {
+    if (cmd == NULL || build_cmd(cmd, len, argv) != 0) {
         *handle = NULL;
         res = PROCESS_ERROR_GENERIC;
         goto end;
@@ -55,8 +50,13 @@ cmd_execute(const char *const argv[], HANDLE *handle) {
         goto end;
     }
 
-    if (!CreateProcessW(NULL, wide, NULL, NULL, FALSE, 0, NULL, NULL, &si,
-                        &pi)) {
+    if (!CreateProcessW(NULL, wide,
+                        NULL,NULL,
+                        FALSE,
+                        0,
+                        NULL,
+                        NULL,
+                        &si, &pi)) {
         *handle = NULL;
         if (GetLastError() == ERROR_FILE_NOT_FOUND) {
             res = PROCESS_ERROR_MISSING_BINARY;
@@ -65,11 +65,12 @@ cmd_execute(const char *const argv[], HANDLE *handle) {
         }
         goto end;
     }
+
     *handle = pi.hProcess;
+
     end:
     SDL_free(wide);
     free(cmd);
-
     return res;
 }
 
