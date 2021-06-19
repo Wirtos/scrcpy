@@ -11,7 +11,14 @@
 #include "util/str_util.h"
 
 #ifndef static_assert
-    #define static_assert(x, msg) (void) sizeof(struct {int a[(x) ? 1 : -1]; })
+  /* This static assertion works because 'expr' is evaluated at compile-time
+   * in order to decide the size of array 'a' in an anonymous structure.
+   * In case 'expr' is false, array gets the size -1, which is invalid.
+   * Element 'b' serves the purpose of 'a' not being the last element,
+   *  so it's certainly not a VLA (meaning only constant expr will be allowed).
+   */
+    #define static_assert(expr, msg) \
+        (void) ((void) sizeof( struct {char a[(expr) ? 1 : -1], b;}), "Assertion failed")
 #endif
 
 void
